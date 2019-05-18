@@ -36,14 +36,7 @@ process_execute (const char *file_name)
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
-
-  /** +
-   * trim the file name*/
   strlcpy (fn_copy, file_name, PGSIZE);
-  char * ptr;
-
-  file_name = strtok_r(file_name," ",&ptr);
-  // +
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
