@@ -4,5 +4,7 @@
 #define USERPROG_SYSCALL_H
 
 void syscall_init (void);
+
+struct lock file_lock;
 void exit(int status);
 #endif

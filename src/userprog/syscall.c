@@ -264,6 +264,7 @@ syscall_init (void)
   syscall_handlers[SYS_EXEC] = &sys_exec;
   syscall_handlers[SYS_FILESIZE] = &sys_filesize;
 
+  lock_init(&file_lock);
   list_init (&file_list);
 }
 
@@ -340,7 +341,9 @@ void sys_exec(struct intr_frame* f){
   // max name char[16]
 
   char *file_name = *(char **)(f->esp+4);
+  lock_acquire(&file_lock);
   f->eax = exec(file_name);
+  lock_release(&file_lock);
 };
 
 /* Wait for a child process to die. */
@@ -378,8 +381,9 @@ void sys_open(struct intr_frame* f){
     exit(-1);
   }
   char *file_name = *(char **)(f->esp+4);
+  lock_acquire(&file_lock);
   f->eax = open(file_name);
-
+  lock_release(&file_lock);
 
 }; /*Open a file. */
 
@@ -399,8 +403,9 @@ void sys_read(struct intr_frame* f){
   if (!is_valid_p(buffer, 1) || !is_valid_p(buffer + size,1)){
     exit(-1);
   }
+  lock_acquire(&file_lock);
   f->eax = read(fd,buffer,size);
-
+  lock_release(&file_lock);
 };
 
 /* Read from a file. */
@@ -412,7 +417,9 @@ void sys_write(struct intr_frame* f){
   if (!is_valid_p(buffer, 1) || !is_valid_p(buffer + size,1)){
     exit(-1);
 }
+  lock_acquire(&file_lock);
   f->eax = write(fd,buffer,size);
+  lock_release(&file_lock);
   return;
 }; /* Write to a file. */
 
