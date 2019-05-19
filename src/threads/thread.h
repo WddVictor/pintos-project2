@@ -93,7 +93,7 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-#ifdef USERPROG
+// #ifdef USERPROG
     /* Owned by userprog/process.c. */
     tid_t parent_id;                    /* parent pid (tid) */
     uint32_t *pagedir;                  /* Page directory. */
@@ -101,7 +101,7 @@ struct thread
     struct list fd_list;       /* List of all file_descriptor it owns*/
     int exit_status;
     struct file *executable;     /* The thread's executable*/
-#endif
+// #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
