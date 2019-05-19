@@ -186,54 +186,41 @@ start_process(void *file_name_)
   }
 
   success = load(argv[0], &if_.eip, &if_.esp);
+   /* If load failed, quit. */
   if (!success)
   {
     writer(thread_current()->tid, 'e', TID_ERROR);
     exit(-1);
   }
   int id = thread_current()->tid;
-  writer(id, 'e', id);
-  char *addr_arr[argc];
+  writer(id, 'e', id);  
+  char *arg_addr[argc];
 
   for (int i = argc - 1; i >= 0; i--)
   {
-    if_.esp = if_.esp - sizeof(char) * (strlen(argv[i]) + 1);
-
-    addr_arr[i] = (char *)if_.esp;
-    memcpy(if_.esp, argv[i], strlen(argv[i]) + 1);
+    if_.esp -=  strlen(argv[i]) + 1;
+    arg_addr[i] = (char *)if_.esp;
+    strlcpy(if_.esp, argv[i], strlen(argv[i]) + 1);
   }
   //world-align
   while ((int)if_.esp % 4 != 0)
   {
     if_.esp--;
   }
-  //printf("%d\tworld-align\t0\n", if_.esp);
-  if_.esp = if_.esp - 4;
-  (*(int *)if_.esp) = 0;
-  //printf("%d\targv[%d]\t%d\n",if_.esp,i,*((int *)if_.esp));
+  
+  int *esp = (char *)if_.esp-4;
+
+  *--esp= 0; // prevent no input args
+
+  // store the address of input args
   for (int i = argc - 1; i >= 0; i--)
-  {
+    *--esp = (int *)arg_addr[i];
 
-    if_.esp = if_.esp - 4;             //sizeof()
-    (*(char **)if_.esp) = addr_arr[i]; // if_.esp a pointer to uint32_t*
-    //printf("%d\targv[%d]\t%d\n",if_.esp,i,(*(char **)if_.esp));
-  }
+  *--esp =esp+1;
+  *--esp = argc;
+  *--esp = 0;
+  if_.esp = esp;
 
-  if_.esp = if_.esp - 4;
-  (*(char **)if_.esp) = if_.esp + 4;
-  //printf("%d\targv\t%d\n",if_.esp,(*(char **)if_.esp));
-
-  //put argc
-  if_.esp = if_.esp - 4;
-  (*(int *)if_.esp) = argc;
-  //printf("%d\targc\t%d\n",if_.esp,(*(int *)if_.esp));
-
-  //put return address 0
-  if_.esp = if_.esp - 4;
-  (*(int *)if_.esp) = 0;
-  //printf("%d\treturn address\t%d\n",if_.esp,(*(int *)if_.esp));
-
-  /* If load failed, quit. */
   free(command_bak);
   palloc_free_page(file_name);
 
@@ -264,10 +251,7 @@ bool is_child(tid_t tid, bool delete)
 
   for (e = list_begin(&cur->children); e != list_end(&cur->children); e = list_next(e))
   {
-    // TODO: thread was freed!
-    // struct thread *t = list_entry(e,struct process,elem)->thread;
     int child_tid = list_entry(e, struct process, elem)->thread_id;
-    // printf("%d has children %d\n",thread_tid(),child_tid);
     if (tid == child_tid)
     {
       if (delete)
