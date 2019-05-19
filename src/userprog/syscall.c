@@ -21,24 +21,21 @@ static void syscall_handler (struct intr_frame *);
 typedef int pid_t;
 
 
-void sys_halt(struct intr_frame* f); /* Halt the operating system. */
-void sys_exit(struct intr_frame* f); /* Terminate this process. */
-void sys_exec(struct intr_frame* f); /* Start another process. */
-void sys_wait(struct intr_frame* f); /* Wait for a child process to die. */
-void sys_create(struct intr_frame* f); /* Create a file. */
-void sys_remove(struct intr_frame* f);/* Create a file. */
-void sys_open(struct intr_frame* f); /*Open a file. */
-void sys_filesize(struct intr_frame* f);/* Obtain a file's size. */
-void sys_read(struct intr_frame* f);  /* Read from a file. */
-void sys_write(struct intr_frame* f); /* Write to a file. */
-void sys_seek(struct intr_frame* f); /* Change position in a file. */
-void sys_tell(struct intr_frame* f); /* Report current position in a file. */
-void sys_close(struct intr_frame* f); /* Close a file. */
-
-
-//Projects 2 and later.
-void halt (void) NO_RETURN;
-void exit (int status) NO_RETURN;
+void sys_halt(struct intr_frame* f); 
+void sys_exit(struct intr_frame* f); 
+void sys_exec(struct intr_frame* f); 
+void sys_wait(struct intr_frame* f); 
+void sys_create(struct intr_frame* f);
+void sys_remove(struct intr_frame* f);
+void sys_open(struct intr_frame* f); 
+void sys_filesize(struct intr_frame* f);
+void sys_read(struct intr_frame* f); 
+void sys_write(struct intr_frame* f);
+void sys_seek(struct intr_frame* f); 
+void sys_tell(struct intr_frame* f); 
+void sys_close(struct intr_frame* f);
+void halt (void) ;
+void exit (int status) ;
 pid_t exec (const char *file);
 int wait (pid_t);
 bool create (const char *file, unsigned initial_size);
@@ -52,12 +49,11 @@ unsigned tell (int fd);
 void close (int fd);
 
 static struct file *find_file_by_fd (int fd);
-static struct fd_entry *find_fd_entry_by_fd (int fd);
+static struct fd_entry *find_fd (int fd);
 static int alloc_fid (void);
-static struct fd_entry *find_fd_entry_by_fd_in_process (int fd);
+static struct fd_entry *find_fd_by_fd (int fd);
 
-//store all syscalls
-static void (*syscall_handlers[SYS_CALL_NUM])(struct intr_frame *); // array of all system calls
+static void (*syscall_handlers[SYS_CALL_NUM])(struct intr_frame *); 
 
 
 struct fd_entry{
@@ -79,7 +75,7 @@ alloc_fid (void)
 
 
 static struct fd_entry *
-find_fd_entry_by_fd_in_process (int fd)
+find_fd_by_fd (int fd)
 {
   struct fd_entry *ret;
   struct list_elem *l;
@@ -103,7 +99,7 @@ find_file_by_fd (int fd)
 {
   struct fd_entry *ret;
 
-  ret = find_fd_entry_by_fd (fd);
+  ret = find_fd (fd);
   if (!ret)
     return NULL;
   return ret->file;
@@ -186,7 +182,7 @@ thread_exit ();
 
 
 void close (int fd){
-  struct fd_entry *f = find_fd_entry_by_fd_in_process(fd);
+  struct fd_entry *f = find_fd_by_fd(fd);
 
   // close more than once will fail
   if(f == NULL){
@@ -454,7 +450,7 @@ syscall_handler (struct intr_frame *f)
 
 
 static struct fd_entry *
-find_fd_entry_by_fd (int fd)
+find_fd (int fd)
 {
   struct fd_entry *ret;
   struct list_elem *l;
