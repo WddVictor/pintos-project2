@@ -46,8 +46,26 @@ tid_t process_execute(const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
+  if (tid == TID_ERROR){
     palloc_free_page(fn_copy);
+    return TID_ERROR;
+  }
+// ++ add tid to parent
+  enum intr_level old_level = intr_disable ();
+  struct thread *child = get_thread_by_tid(tid);
+  child->parent = thread_current()->tid;
+
+
+  struct process *p = malloc(sizeof(struct process));
+  if(p==NULL){
+
+    return TID_ERROR;
+  }
+  p->thread = child->tid;
+
+  list_push_back(&thread_current()->children,&p->elem);
+  intr_set_level (old_level);
+  // ++
   return tid;
 }
 
@@ -128,6 +146,8 @@ start_process(void *file_name_)
                : "memory");
   NOT_REACHED();
 }
+
+
 
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an

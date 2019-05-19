@@ -216,7 +216,7 @@ void sys_write(struct intr_frame* f){//not done
 
 void sys_wait(struct intr_frame* f){
   pid_t pid;
-  if(!is_valid_pointer(f->esp+4,4)){
+  if(!is_valid_p(f->esp+4,4)){
     exit(-1);
   }
   pid = *((int*)f->esp+1);

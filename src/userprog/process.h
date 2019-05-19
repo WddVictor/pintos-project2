@@ -8,4 +8,11 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (void);
 
+//++
+struct process{
+  struct list_elem elem;
+  // struct thread *thread;
+  tid_t thread; // thread id
+};
+//++
 #endif /* userprog/process.h */

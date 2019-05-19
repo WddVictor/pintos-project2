@@ -94,7 +94,7 @@ struct thread
   
   //++ 
   //the wait semaphore
-  struct thread * parent;
+  tid_t parent;
   struct list children;
   struct semaphore * wait_children;
   //++
@@ -134,6 +134,9 @@ void thread_unblock(struct thread *);
 struct thread *thread_current(void);
 tid_t thread_tid(void);
 const char *thread_name(void);
+// ++ 
+struct thread* get_thread_by_tid(tid_t id);
+// ++ 
 
 void thread_exit(void) NO_RETURN;
 void thread_yield(void);
