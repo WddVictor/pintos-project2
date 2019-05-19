@@ -18,8 +18,24 @@ typedef int pid_t;
 
 static void syscall_handler (struct intr_frame *);
 static void (*syscall_handlers[SYS_CALL_NUM])(struct intr_frame *); // array of all system calls
+static struct list file_list;
+struct fd_entry{
+  int fd;
+  struct file *file;
+  struct list_elem elem;
+  struct list_elem thread_elem;
+};
 
-
+static int get_user (const uint8_t *uaddr);
+static bool is_valid_p(void * esp, uint8_t argc);
+static bool is_valid_string(void * str);
+static int alloc_fid (void);
+struct fd_entry *find_fd_by_fd(int fd);
+void close(int fd);
+void exit(int status);
+int write (int fd, const void *buffer, unsigned length);
+int open(const char *file);
+struct file *find_file_by_fd(int fd);
 void
 syscall_init (void) 
 {
@@ -39,7 +55,7 @@ syscall_init (void)
   syscall_handlers[SYS_EXEC] = &sys_exec;
   syscall_handlers[SYS_FILESIZE] = &sys_filesize;
 
-  lock_init(&file_lock);
+
   list_init (&file_list);
 }
 
@@ -120,7 +136,7 @@ void exit(int status){//done
 
   while(!list_empty(&t->fd_list)){
     e = list_begin(&t->fd_list);
-    close(list_entry(l,struct fd_entry, thread_elem)->fd);
+    close(list_entry(e,struct fd_entry, thread_elem)->fd);
   }
   t->exit_status = status;
   thread_exit();
@@ -131,20 +147,27 @@ void exit(int status){//done
 static void
 syscall_handler (struct intr_frame* f) 
 {
-  printf ("system call!\n");
-  thread_exit ();
+  if(!is_valid_pointer(f->esp,4)){
+    exit(-1);
+    return;
+  }
+  int syscall_num = * (int *)f->esp;
+  if(syscall_num<=0||syscall_num>=SYS_CALL_NUM){
+    exit(-1);
+  }
+  syscall_handlers[syscall_num](f);
 }
 
 void sys_halt(struct intr_frame* f){//done
   shutdown();
-}
+};
 
 void sys_exit(struct intr_frame* f){//done
   if (!is_valid_p(f->esp + 4,4)){
     exit(-1);
   }int status = *(int *)(f->esp + 4);
   exit(status);
-}
+};
 
 
 int write (int fd, const void *buffer, unsigned length){
@@ -173,18 +196,14 @@ void sys_write(struct intr_frame* f){//not done
   }
 
   // write to the file, acquire file lock
-  lock_acquire(&file_lock);
   f->eax = write(fd, buffer, size);
-  lock_release(&file_lock);
   return;
-}
+};
 
-void sys_exec(strut intr_frame* f){//done
+void sys_exec(struct intr_frame* f){//done
   char *file_name = *(char **)(f->esp + 4);
-  lock_acquire(&file_lock);
   f->eax = process_execute(file_name);
-  lock_release(&file_lock);
-}
+};
 
 void sys_create(struct intr_frame* f){//done
   char *file_name = *(char **)(f->esp + 4);
@@ -193,9 +212,9 @@ void sys_create(struct intr_frame* f){//done
   }
   unsigned size = *(int *)(f->esp + 8);
   filesys_create(file_name,size);
-}
+};
 
-void open(const char *file){ // done filesys_open...done
+int open(const char *file){ // done filesys_open...done
   struct file* f = filesys_open(file);
   if (f == NULL){
     return -1;
@@ -221,20 +240,18 @@ void sys_open(struct intr_frame* f){//done
     exit(-1);
   }
 
-  lock_acquire(&file_lock);
   f->eax = open(file_name);
-  lock_release(&file_lock);
-}
+};
 
 void sys_close(struct intr_frame* f){//done
   int fd = *(int *)(f->esp + 4);
   close(fd);
-}
+};
 
 void sys_remove(struct intr_frame* f){//done filesys_remove...done
   char *file_name = *(char **)(f->esp + 4);
   f->eax = filesys_remove(file_name);
-}
+};
 
 struct file *find_file_by_fd(int fd){//done
   struct fd_entry *ret;
@@ -243,7 +260,7 @@ struct file *find_file_by_fd(int fd){//done
     return NULL;
   }
   return ret->file;
-}
+};
 
 int fs(int fd){ // done find_file_by_fd...done
   struct file *f = find_file_by_fd(fd);
@@ -251,13 +268,13 @@ int fs(int fd){ // done find_file_by_fd...done
     exit(-1);
   }
   return file_length(f);
-}
+};
 
 
 void sys_filesize(struct intr_frame* f){//done
   int fd = *(int *)(f->esp + 4);
   f->eax = fs(fd);
-}
+};
 
 int read (int fd, void *buffer, unsigned length){//done
   // printf("call read %d\n", fd);
@@ -282,10 +299,8 @@ void sys_read(struct intr_frame* f){//done
   if (!is_valid_pointer(buffer, 1) || !is_valid_pointer(buffer + size,1)){
     exit(-1);
   }
-  lock_acquire(&file_lock);
   f->eax = read(fd,buffer,size);
-  lock_release(&file_lock);
-}
+};
 
 unsigned tell(int fd){//done file tell..done
     struct file *f = find_file_by_fd(fd);
@@ -298,7 +313,7 @@ unsigned tell(int fd){//done file tell..done
 void sys_tell(struct intr_frame* f){//done
   int fd = *(int *)(f->esp + 4);
   f->eax = tell(fd);
-}
+};
 
 
 void seek(int fd, unsigned position){//file_seek... done
@@ -312,4 +327,4 @@ void sys_seek(struct intr_frame* f){//done
     int fd = *(int *)(f->esp + 4);
   unsigned pos = *(unsigned *)(f->esp + 8);
   seek(fd,pos);
-}
+};
