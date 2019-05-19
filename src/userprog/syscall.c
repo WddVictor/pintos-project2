@@ -161,7 +161,7 @@ void exit(int status){//done
 static void
 syscall_handler (struct intr_frame* f) 
 {
-  if(!is_valid_pointer(f->esp,4)){
+  if(!is_valid_p(f->esp,4)){
     exit(-1);
     return;
   }
@@ -213,6 +213,16 @@ void sys_write(struct intr_frame* f){//not done
   f->eax = write(fd, buffer, size);
   return;
 };
+
+void sys_wait(struct intr_frame* f){
+  pid_t pid;
+  if(!is_valid_pointer(f->esp+4,4)){
+    exit(-1);
+  }
+  pid = *((int*)f->esp+1);
+  f->eax = process_wait(pid);
+};
+
 
 void sys_exec(struct intr_frame* f){//done
   char *file_name = *(char **)(f->esp + 4);
@@ -310,7 +320,7 @@ void sys_read(struct intr_frame* f){//done
   int fd = *(int *)(f->esp + 4);
   void *buffer = *(char**)(f->esp + 8);
   unsigned size = *(unsigned *)(f->esp + 12);
-  if (!is_valid_pointer(buffer, 1) || !is_valid_pointer(buffer + size,1)){
+  if (!is_valid_p(buffer, 1) || !is_valid_p(buffer + size,1)){
     exit(-1);
   }
   f->eax = read(fd,buffer,size);
