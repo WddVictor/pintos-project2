@@ -474,6 +474,7 @@ init_thread (struct thread *t, const char *name, int priority)
   sema_init(&wait_children, 0);
   t->wait_children = &wait_children;
   list_init(&(t->children));
+   list_init(&(t->fd_list));
   // ++
 
   old_level = intr_disable ();

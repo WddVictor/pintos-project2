@@ -92,7 +92,6 @@ struct thread
   int priority;              /* Priority. */
   struct list_elem allelem;  /* List element for all threads list. */
   
-  
   //++ 
   //the wait semaphore
   struct thread * parent;
@@ -106,6 +105,9 @@ struct thread
 #ifdef USERPROG
   /* Owned by userprog/process.c. */
   uint32_t *pagedir; /* Page directory. */
+  struct list fd_list;       /* List of all file_descriptor it owns*/
+  int exit_status;
+
 #endif
 
   /* Owned by thread.c. */
