@@ -66,11 +66,62 @@ Added the following functions:
     static struct fd_entry *find_fd_by_fd (int fd);
 
     static void (*syscall_handlers[SYS_CALL_NUM])(struct intr_frame *);  
+
 ```  
 
 The methods are aimed to handle different system calls.  
 
 ## Algorithms  
+
+The argument passing algorithm:  
+For the process_execute():
+
+```c
+
+char *name, *saved_ptr;
+name = strtok_r(file_name," ",&saved_ptr);
+/*the name is the program name*/
+tid = thread_create(name, PRI_DEFAULT, start_process, fn_copy);
+/*create the new thread*/
+
+```
+
+Then we put other arguments into the user stack. The user stack pointer is ```if_.esp```Since the stack grows down, the string  grows up. So we should carefully deal with the pointer and the data.  
+Firstly, we take out the arguments:
+
+```c
+
+esp = if_.esp;//store the pointer
+char *args[265];//store the arguments
+while (saved_ptr not NULL, take the separate argument into token)
+    strcpy(esp, token, strlen(token) + 2)
+    args[n++] = esp;//n starts from n, represents the argc
+    /*store the arguments and store the corresponding address.*/
+end while
+```
+
+After store the data into user stack, we need to put their addresses into stack in sequence.  
+Before this, we need to modify the pointer address.
+
+```c
+
+while (esp % 4 not equals 0)
+    esp--;
+end while
+/*make sure the esp is a multiple of 4*/
+*(esp - 4) = 0;//avoid there is no arguments
+*p = esp - 4;
+p--;
+for i = n to 0
+  *p-- = args[i]// store the data address into the stack.
+end for
+//put the argc, argv into the stack
+*p-- = p + 1;
+*p-- = n;
+*p-- = 0;
+//set the pointer points to the new top of the stack
+if_.esp = p + 1;
+```
 
 ## Synchronization  
 
