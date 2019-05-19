@@ -2,8 +2,11 @@
 use strict;
 use warnings;
 use tests::tests;
+
 check_expected ([<<'EOF']);
-(exec-bound-2) begin
-exec-bound-2: exit(-1)
+(wgy-test-2) begin
+(wgy-test-2) sucess
+(wgy-test-2) end
+wgy-test-2: exit(0)
 EOF
 pass;
