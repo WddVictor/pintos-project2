@@ -60,10 +60,7 @@ add an elem to read list
 */
 void write_pipe(int pid,enum action action,int value){
   enum intr_level old_level = intr_disable ();
-  // printf("%d write pipe %d, %d, %d\n",thread_tid(),pid, action, value);
-  /*
-  create a elem in read_list
-  */
+
   struct read_elem* read = malloc(sizeof(struct read_elem));
   read->pid = pid;
   read->action = action;
