@@ -185,28 +185,35 @@ start_process (void *file_name_)
   // load name const char* Executable file name
   char *argv[MAX_ARGC];
   int argc;
-  char* command_bak = extract_command(file_name,argv,&argc);
-  // eip: The address of the next instruction to be executed by the interrupted thread.
-  // esp: The interrupted thread’s stack pointer.
+
+
+  char* command_bak = NULL;
+  argc=0;
+  command_bak = malloc(strlen(file_name)+1);
+  char* save = NULL;
+  char* arg = NULL;
+
+  strlcpy(command_bak,file_name,PGSIZE);
+
+
+  arg = strtok_r(command_bak," ",&save);
+  argv[argc] = arg;
+
+  while (arg != NULL) {
+    arg = strtok_r(NULL," ",&save);
+    argv[++argc] = arg;
+  }
+
   success = load (argv[0], &if_.eip, &if_.esp);
   if (!success){
-    // load fial set exit status
-    // free(command_bak);
     write_pipe(thread_current()->tid,EXEC,TID_ERROR);
-    // thread_current()->exit_status = -1;
-    // thread_exit ();
     exit(-1);
   }
-  //TODO :: why
-  // PASS ARG-ONCE HERE WHY!!!
   int id = thread_current()->tid;
   write_pipe(id,EXEC,id);
-  //put arguments into stack;
-  int i=argc;
   char * addr_arr[argc];
-  //printf("%s\n","try to put args" );
-  //printf("Address\t         Nmae\t        Data\n");
-  while(--i>=0){
+
+  for(int i = argc-1;i>=0;i--){
     if_.esp = if_.esp - sizeof(char)*(strlen(argv[i])+1); //+1: extra \0
 
     addr_arr[i]=(char *)if_.esp;
@@ -215,19 +222,15 @@ start_process (void *file_name_)
     //printf("%d\targv[%d][...]\t'%s'\n",if_.esp,i,(char*)if_.esp);
 
   }
-
-  // 4k  对齐
   //world-align
   while ((int)if_.esp%4!=0) {
     if_.esp--;
   }
   //printf("%d\tworld-align\t0\n", if_.esp);
-
-  i=argc;
   if_.esp = if_.esp-4;
   (*(int *)if_.esp)=0;
   //printf("%d\targv[%d]\t%d\n",if_.esp,i,*((int *)if_.esp));
-  while (--i>=0) {
+  for(int i = argc-1;i>=0;i--){
 
     if_.esp = if_.esp-4;//sizeof()
     (*(char **)if_.esp) = addr_arr[i]; // if_.esp a pointer to uint32_t*

@@ -59,9 +59,7 @@ static struct fd_entry *find_fd_entry_by_fd_in_process (int fd);
 //store all syscalls
 static void (*syscall_handlers[SYS_CALL_NUM])(struct intr_frame *); // array of all system calls
 
-/*
-file descriptors
-*/
+
 struct fd_entry{
   int fd;
   struct file *file;
@@ -71,11 +69,7 @@ struct fd_entry{
 
 static struct list file_list;
 
-/*
-file descriptor id generaor
-generate from 2
-to all process
-*/
+
 static int
 alloc_fid (void)
 {
@@ -83,9 +77,7 @@ alloc_fid (void)
   return fid++;
 }
 
-/*
-find fd_entry in current's thread fd_list
-*/
+
 static struct fd_entry *
 find_fd_entry_by_fd_in_process (int fd)
 {
@@ -105,9 +97,7 @@ find_fd_entry_by_fd_in_process (int fd)
   return NULL;
 }
 
-/*
-find file be fd id
-*/
+
 static struct file *
 find_file_by_fd (int fd)
 {
@@ -120,16 +110,6 @@ find_file_by_fd (int fd)
 }
 
 
-/**
-Creates a new file called file initially initial size bytes in size.
-Returns true if successful, false otherwise.
-Creating a new file does not open it:
-opening the new file is a separate operation
-which would require a open system call.
-
-@param file: file name
-@param
-*/
 bool create (const char *file, unsigned initial_size){
   //printf("call create %s\n",file);
     /*
@@ -138,39 +118,15 @@ bool create (const char *file, unsigned initial_size){
     return filesys_create(file,initial_size);
 }
 
-/*
-delete the fiile called file.
-return true if successful, false otherwise
-A file may be removed regardless of whether it is
-open or closed. and removing an open file does not
-close it
-*/
+
 bool remove (const char *file){
   //printf("call remove file %s\n",file);
   return filesys_remove(file);
 }
 
-/*
-Opens the file called file. Returns a nonnegative integer handle called a “file descriptor” (fd), or -1 if the file could not be opened. File descriptors numbered 0 and 1 are reserved for the console:
-fd 0 (STDIN_FILENO) is standard input, fd 1 (STDOUT_FILENO) is standard ouint open (const char *file){
-tput.
-The open system call will never return either of these file descriptors,
-which are valid as system call arguments only as explicitly described below.
-Each process has an independent set of file descriptors.
-File descriptors are not inherited by child processes.
-When a single file is opened more than once,
-whether by a single process or different processes, each open returns a new
-file descriptor. Different file descriptors for a single file are
-closed independently in separate calls to close and they do not share
-*/
 
 int open (const char *file){
-    //printf("call open file %s\n",file );  // if (get_user(((uint8_t *)esp)+i) == -1){
-  //   return false;
-  // }
-    /*
-    TODO: check valid string
-    */
+  
     struct file* f = filesys_open(file);
     // open  fail, kill the process
     if(f == NULL){
@@ -195,15 +151,11 @@ int open (const char *file){
 
 }
 
-/*
-wait for process with pid
-*/
+
 int wait (pid_t pid){
   return process_wait(pid);
 }
-/*
-write buffer to stdout or file
-*/
+
 int write (int fd, const void *buffer, unsigned length){
   if(fd==STDOUT){ // stdout
       putbuf((char *) buffer,(size_t)length);
@@ -218,10 +170,6 @@ int write (int fd, const void *buffer, unsigned length){
   }
 }
 
-
-/*
-exit curret thread with given status
-*/
 void exit(int status){
 
   /* Close all the files */
@@ -239,11 +187,7 @@ t->exit_status = status;
 thread_exit ();
 }
 
-/*
-Closes file descriptor fd. Exiting or terminating a process
-implicitly closes all its open file descriptors,
- as if by calling this function for each one.
-*/
+
 void close (int fd){
   struct fd_entry *f = find_fd_entry_by_fd_in_process(fd);
 
@@ -257,12 +201,7 @@ void close (int fd){
   free (f);
 }
 
-/*
-Reads size bytes from the file open as fd into buffer.
-Returns the number of bytes actually read (0 at end of file),
-or -1 if the file could not be read (due to a condition other than end of file).
- Fd 0 reads from the keyboard using input_getc().
-*/
+
 int read (int fd, void *buffer, unsigned length){
   // printf("call read %d\n", fd);
   if(fd==STDIN){
@@ -328,23 +267,15 @@ syscall_init (void)
   syscall_handlers[SYS_SEEK] = &sys_seek;
   syscall_handlers[SYS_TELL] = &sys_tell;
   syscall_handlers[SYS_CLOSE] =&sys_close;
-
   syscall_handlers[SYS_READ] = &sys_read;
   syscall_handlers[SYS_EXEC] = &sys_exec;
   syscall_handlers[SYS_FILESIZE] = &sys_filesize;
 
-  lock_init(&file_lock);
   list_init (&file_list);
 }
 
 
-/* Reads a byte at user virtual address UADDR.
-   UADDR must be below PHYS_BASE.
-   Returns the byte value if successful, -1 if a segfault
-   occurred. */
 
-   //uint8_t unsigned char
-   //uaddr is a address
 static int
 get_user (const uint8_t *uaddr)
 {
@@ -362,9 +293,7 @@ get_user (const uint8_t *uaddr)
   return result;
 }
 
-/* Writes BYTE to user address UDST.
-   UDST must be below PHYS_BASE.
-   Returns true if successful, false if a segfault occurred. */
+
 static bool
 put_user (uint8_t *udst, uint8_t byte)
 {
@@ -376,10 +305,7 @@ put_user (uint8_t *udst, uint8_t byte)
   return error_code != -1;
 }
 
-/*
-check the following address is valid:
-if one of them are not valid, the function will return false
-*/
+
 bool is_valid_pointer(void* esp,uint8_t argc){
   uint8_t i = 0;
 for (; i < argc; ++i)
@@ -394,9 +320,7 @@ for (; i < argc; ++i)
 return true;
 }
 
-/*
-return true if it is a valid string
-*/
+
 bool is_valid_string(void *str){
   //return true;
   int ch=-1;
@@ -429,9 +353,7 @@ void sys_exec(struct intr_frame* f){
     exit(-1);
   }
   char *file_name = *(char **)(f->esp+4);
-  lock_acquire(&file_lock);
   f->eax = exec(file_name);
-  lock_release(&file_lock);
 };
 
 /* Wait for a child process to die. */
@@ -475,9 +397,7 @@ void sys_open(struct intr_frame* f){
     exit(-1);
   }
   char *file_name = *(char **)(f->esp+4);
-  lock_acquire(&file_lock);
   f->eax = open(file_name);
-  lock_release(&file_lock);
 
 
 }; /*Open a file. */
@@ -502,9 +422,7 @@ void sys_read(struct intr_frame* f){
   if (!is_valid_pointer(buffer, 1) || !is_valid_pointer(buffer + size,1)){
     exit(-1);
   }
-  lock_acquire(&file_lock);
   f->eax = read(fd,buffer,size);
-  lock_release(&file_lock);
 
 };
 
@@ -519,9 +437,7 @@ void sys_write(struct intr_frame* f){
   if (!is_valid_pointer(buffer, 1) || !is_valid_pointer(buffer + size,1)){
     exit(-1);
 }
-  lock_acquire(&file_lock);
   f->eax = write(fd,buffer,size);
-  lock_release(&file_lock);
   return;
 }; /* Write to a file. */
 
@@ -552,10 +468,6 @@ void sys_close(struct intr_frame* f){
 
 }; /* Close a file. */
 
-
-
-// syscall_init put this function as syscall handler
-// switch handler by syscall num
 static void
 syscall_handler (struct intr_frame *f)
 {
