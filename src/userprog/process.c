@@ -27,40 +27,25 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 char* extract_command(char* command,char* argv[],int* argc);
 
 
-/*
-the list save all elem ready to read
-*/
 static struct list read_list;
-/**
-the list to save all read request
-*/
 static struct list wait_list;
 
 struct read_elem{
-  int pid;
+  tid_t pid;
   enum action action;
   struct list_elem elem;
   int value;
 };
 
 struct wait_elem{
-  int pid;
+  tid_t pid;
   enum action action;
   struct list_elem elem;
   struct semaphore sema;
 };
 
-void pipe_init(){
-  list_init(&read_list);
-  list_init(&wait_list);
-}
-
-/*
-add an elem to read list
-*/
 void write_pipe(int pid,enum action action,int value){
   enum intr_level old_level = intr_disable ();
-
   struct read_elem* read = malloc(sizeof(struct read_elem));
   read->pid = pid;
   read->action = action;
@@ -121,15 +106,10 @@ int read_pipe(int pid,enum action action){
 }
 }
 
-
-
-
-
-// call at init.c
 void process_init(){
-  pipe_init();
-  // init root process
-  list_init(&thread_current()->children);
+  list_init(&read_list);
+  list_init(&wait_list);
+  list_init(&(thread_current()->children));
 }
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -142,36 +122,31 @@ void process_init(){
 tid_t
 process_execute (const char *file_name)
 {
-  // printf("process execute :%s\n",file_name );
   char *fn_copy;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-     // can not over 2KB(PGSIZE)
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  char* real_name = NULL;
+  real_name = malloc(strlen(file_name)+1);
+  char* save = NULL;
+  strlcpy(real_name,file_name,PGSIZE);
+  real_name = strtok_r(real_name," ",&save);
+
   /* Create a new thread to execute FILE_NAME. */
-
-  // thread name: file_name(with arguments)
-  // start_process arguments: fn_copy
-  char *argv[MAX_ARGC];
-  int argc;
-  char* command_bak = extract_command(file_name,argv,&argc);
-  // thread->name max 16
-
-  tid = thread_create (argv[0], PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (real_name, PRI_DEFAULT, start_process, fn_copy);
 
   tid = read_pipe(tid,EXEC);
   if (tid == TID_ERROR){
+    // free the page if error
     palloc_free_page (fn_copy);
     return TID_ERROR;
   }
-
-
 
   /*
   add this thread to children, make shure that the thread start correctly
@@ -179,7 +154,6 @@ process_execute (const char *file_name)
    enum intr_level old_level = intr_disable ();
   struct thread *child = get_thread_by_tid(tid);
   child->parent_id = thread_current()->tid;
-
 
   struct process *p = malloc(sizeof(struct process));
   if(p==NULL){
@@ -211,28 +185,35 @@ start_process (void *file_name_)
   // load name const char* Executable file name
   char *argv[MAX_ARGC];
   int argc;
-  char* command_bak = extract_command(file_name,argv,&argc);
-  // eip: The address of the next instruction to be executed by the interrupted thread.
-  // esp: The interrupted thread’s stack pointer.
+
+
+  char* command_bak = NULL;
+  argc=0;
+  command_bak = malloc(strlen(file_name)+1);
+  char* save = NULL;
+  char* arg = NULL;
+
+  strlcpy(command_bak,file_name,PGSIZE);
+
+
+  arg = strtok_r(command_bak," ",&save);
+  argv[argc] = arg;
+
+  while (arg != NULL) {
+    arg = strtok_r(NULL," ",&save);
+    argv[++argc] = arg;
+  }
+
   success = load (argv[0], &if_.eip, &if_.esp);
   if (!success){
-    // load fial set exit status
-    // free(command_bak);
     write_pipe(thread_current()->tid,EXEC,TID_ERROR);
-    // thread_current()->exit_status = -1;
-    // thread_exit ();
     exit(-1);
   }
-  //TODO :: why
-  // PASS ARG-ONCE HERE WHY!!!
   int id = thread_current()->tid;
   write_pipe(id,EXEC,id);
-  //put arguments into stack;
-  int i=argc;
   char * addr_arr[argc];
-  //printf("%s\n","try to put args" );
-  //printf("Address\t         Nmae\t        Data\n");
-  while(--i>=0){
+
+  for(int i = argc-1;i>=0;i--){
     if_.esp = if_.esp - sizeof(char)*(strlen(argv[i])+1); //+1: extra \0
 
     addr_arr[i]=(char *)if_.esp;
@@ -241,19 +222,15 @@ start_process (void *file_name_)
     //printf("%d\targv[%d][...]\t'%s'\n",if_.esp,i,(char*)if_.esp);
 
   }
-
-  // 4k  对齐
   //world-align
   while ((int)if_.esp%4!=0) {
     if_.esp--;
   }
   //printf("%d\tworld-align\t0\n", if_.esp);
-
-  i=argc;
   if_.esp = if_.esp-4;
   (*(int *)if_.esp)=0;
   //printf("%d\targv[%d]\t%d\n",if_.esp,i,*((int *)if_.esp));
-  while (--i>=0) {
+  for(int i = argc-1;i>=0;i--){
 
     if_.esp = if_.esp-4;//sizeof()
     (*(char **)if_.esp) = addr_arr[i]; // if_.esp a pointer to uint32_t*
