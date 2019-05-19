@@ -21,24 +21,21 @@ static void syscall_handler (struct intr_frame *);
 typedef int pid_t;
 
 
-void sys_halt(struct intr_frame* f); /* Halt the operating system. */
-void sys_exit(struct intr_frame* f); /* Terminate this process. */
-void sys_exec(struct intr_frame* f); /* Start another process. */
-void sys_wait(struct intr_frame* f); /* Wait for a child process to die. */
-void sys_create(struct intr_frame* f); /* Create a file. */
-void sys_remove(struct intr_frame* f);/* Create a file. */
-void sys_open(struct intr_frame* f); /*Open a file. */
-void sys_filesize(struct intr_frame* f);/* Obtain a file's size. */
-void sys_read(struct intr_frame* f);  /* Read from a file. */
-void sys_write(struct intr_frame* f); /* Write to a file. */
-void sys_seek(struct intr_frame* f); /* Change position in a file. */
-void sys_tell(struct intr_frame* f); /* Report current position in a file. */
-void sys_close(struct intr_frame* f); /* Close a file. */
-
-
-//Projects 2 and later.
-void halt (void) NO_RETURN;
-void exit (int status) NO_RETURN;
+void sys_halt(struct intr_frame* f); 
+void sys_exit(struct intr_frame* f); 
+void sys_exec(struct intr_frame* f); 
+void sys_wait(struct intr_frame* f); 
+void sys_create(struct intr_frame* f);
+void sys_remove(struct intr_frame* f);
+void sys_open(struct intr_frame* f); 
+void sys_filesize(struct intr_frame* f);
+void sys_read(struct intr_frame* f); 
+void sys_write(struct intr_frame* f);
+void sys_seek(struct intr_frame* f); 
+void sys_tell(struct intr_frame* f); 
+void sys_close(struct intr_frame* f);
+void halt (void) ;
+void exit (int status) ;
 pid_t exec (const char *file);
 int wait (pid_t);
 bool create (const char *file, unsigned initial_size);
@@ -52,12 +49,11 @@ unsigned tell (int fd);
 void close (int fd);
 
 static struct file *find_file_by_fd (int fd);
-static struct fd_entry *find_fd_entry_by_fd (int fd);
+static struct fd_entry *find_fd (int fd);
 static int alloc_fid (void);
-static struct fd_entry *find_fd_entry_by_fd_in_process (int fd);
+static struct fd_entry *find_fd_by_fd (int fd);
 
-//store all syscalls
-static void (*syscall_handlers[SYS_CALL_NUM])(struct intr_frame *); // array of all system calls
+static void (*syscall_handlers[SYS_CALL_NUM])(struct intr_frame *); 
 
 
 struct fd_entry{
@@ -79,7 +75,7 @@ alloc_fid (void)
 
 
 static struct fd_entry *
-find_fd_entry_by_fd_in_process (int fd)
+find_fd_by_fd (int fd)
 {
   struct fd_entry *ret;
   struct list_elem *l;
@@ -103,7 +99,7 @@ find_file_by_fd (int fd)
 {
   struct fd_entry *ret;
 
-  ret = find_fd_entry_by_fd (fd);
+  ret = find_fd (fd);
   if (!ret)
     return NULL;
   return ret->file;
@@ -111,7 +107,6 @@ find_file_by_fd (int fd)
 
 
 bool create (const char *file, unsigned initial_size){
-  //printf("call create %s\n",file);
     /*
     TODO: check of file_name valid
     */
@@ -120,7 +115,6 @@ bool create (const char *file, unsigned initial_size){
 
 
 bool remove (const char *file){
-  //printf("call remove file %s\n",file);
   return filesys_remove(file);
 }
 
@@ -130,7 +124,6 @@ int open (const char *file){
     struct file* f = filesys_open(file);
     // open  fail, kill the process
     if(f == NULL){
-      //printf("%s\n","open fails");
       return -1;
     }
 
@@ -189,7 +182,7 @@ thread_exit ();
 
 
 void close (int fd){
-  struct fd_entry *f = find_fd_entry_by_fd_in_process(fd);
+  struct fd_entry *f = find_fd_by_fd(fd);
 
   // close more than once will fail
   if(f == NULL){
@@ -279,14 +272,12 @@ syscall_init (void)
 static int
 get_user (const uint8_t *uaddr)
 {
-    //printf("%s\n", "call get user");
   if(!is_user_vaddr((void *)uaddr)){
     return -1;
   }
   if(pagedir_get_page(thread_current()->pagedir,uaddr)==NULL){
     return -1;
   }
-  //printf("%s\n","is_user_vaddr" );
   int result;
   asm ("movl $1f, %0; movzbl %1, %0; 1:"
        : "=&a" (result) : "m" (*uaddr));
@@ -306,7 +297,7 @@ put_user (uint8_t *udst, uint8_t byte)
 }
 
 
-bool is_valid_pointer(void* esp,uint8_t argc){
+bool is_valid_p(void* esp,uint8_t argc){
   uint8_t i = 0;
 for (; i < argc; ++i)
 {
@@ -339,9 +330,7 @@ void sys_halt(struct intr_frame* f){
 
 /* Terminate this process. */
 void sys_exit(struct intr_frame* f){
-  if(!is_valid_pointer(f->esp+4,4)){
-    exit(-1);
-  }
+
   int status = *(int *)(f->esp +4);
   exit(status);
 };
@@ -349,9 +338,7 @@ void sys_exit(struct intr_frame* f){
 /* Start another process. */
 void sys_exec(struct intr_frame* f){
   // max name char[16]
-  if(!is_valid_pointer(f->esp+4,4)||!is_valid_string(*(char **)(f->esp + 4))){
-    exit(-1);
-  }
+
   char *file_name = *(char **)(f->esp+4);
   f->eax = exec(file_name);
 };
@@ -359,18 +346,14 @@ void sys_exec(struct intr_frame* f){
 /* Wait for a child process to die. */
 void sys_wait(struct intr_frame* f){
   pid_t pid;
-  if(!is_valid_pointer(f->esp+4,4)){
-    exit(-1);
-  }
+ 
   pid = *((int*)f->esp+1);
   f->eax = wait(pid);
 };
 
 
 void sys_create(struct intr_frame* f){
-if(!is_valid_pointer(f->esp+4,4)){
-  exit(-1);
-}
+
 char* file_name = *(char **)(f->esp+4);
 if(!is_valid_string(file_name)){
   exit(-1);
@@ -381,7 +364,7 @@ f->eax = create(file_name,size);
 }; /* Create a file. */
 
 void sys_remove(struct intr_frame* f){
-  if (!is_valid_pointer(f->esp +4, 4) || !is_valid_string(*(char **)(f->esp + 4))){
+  if (!is_valid_string(*(char **)(f->esp + 4))){
     exit(-1);
   }
   char *file_name = *(char **)(f->esp+4);
@@ -390,9 +373,7 @@ void sys_remove(struct intr_frame* f){
 };/* Create a file. */
 void sys_open(struct intr_frame* f){
 
-  if (!is_valid_pointer(f->esp +4, 4)){
-    exit(-1);
-  }
+  
   if (!is_valid_string(*(char **)(f->esp + 4))){
     exit(-1);
   }
@@ -403,9 +384,7 @@ void sys_open(struct intr_frame* f){
 }; /*Open a file. */
 
 void sys_filesize(struct intr_frame* f){
-  if (!is_valid_pointer(f->esp +4, 4)){
-    exit(-1);
-  }
+
   int fd = *(int *)(f->esp + 4);
 
   f->eax = filesize(fd);
@@ -413,13 +392,11 @@ void sys_filesize(struct intr_frame* f){
 
 };/* Obtain a file's size. */
 void sys_read(struct intr_frame* f){
-  if (!is_valid_pointer(f->esp + 4, 12)){
-    exit(-1);
-  }
+
   int fd = *(int *)(f->esp + 4);
   void *buffer = *(char**)(f->esp + 8);
   unsigned size = *(unsigned *)(f->esp + 12);
-  if (!is_valid_pointer(buffer, 1) || !is_valid_pointer(buffer + size,1)){
+  if (!is_valid_p(buffer, 1) || !is_valid_p(buffer + size,1)){
     exit(-1);
   }
   f->eax = read(fd,buffer,size);
@@ -428,13 +405,11 @@ void sys_read(struct intr_frame* f){
 
 /* Read from a file. */
 void sys_write(struct intr_frame* f){
-  if(!is_valid_pointer(f->esp+4,12)){
-    exit(-1);
-  }
+
   int fd = *(int *)(f->esp +4);
   void *buffer = *(char**)(f->esp + 8);
   unsigned size = *(unsigned *)(f->esp + 12);
-  if (!is_valid_pointer(buffer, 1) || !is_valid_pointer(buffer + size,1)){
+  if (!is_valid_p(buffer, 1) || !is_valid_p(buffer + size,1)){
     exit(-1);
 }
   f->eax = write(fd,buffer,size);
@@ -442,26 +417,19 @@ void sys_write(struct intr_frame* f){
 }; /* Write to a file. */
 
 void sys_seek(struct intr_frame* f){
-  if (!is_valid_pointer(f->esp +4, 8)){
-    exit(-1);
-  }
   int fd = *(int *)(f->esp + 4);
   unsigned pos = *(unsigned *)(f->esp + 8);
   seek(fd,pos);
 }; /* Change position in a file. */
 
 void sys_tell(struct intr_frame* f){
-  if (!is_valid_pointer(f->esp +4, 4)){
-    exit(-1);
-  }
+
     int fd = *(int *)(f->esp + 4);
     f->eax = tell(fd);
 }; /* Report current position in a file. */
 
 void sys_close(struct intr_frame* f){
-  if (!is_valid_pointer(f->esp +4, 4)){
-    return exit(-1);
-  }
+
   int fd = *(int *)(f->esp + 4);
 
   close(fd);
@@ -471,24 +439,18 @@ void sys_close(struct intr_frame* f){
 static void
 syscall_handler (struct intr_frame *f)
 {
-  //printf ("system call!\n");
-  if(!is_valid_pointer(f->esp,4)){
-    exit(-1);
-    return;
-  }
+
   int syscall_num = * (int *)f->esp;
-  //printf("system call number %d\n", syscall_num);
   if(syscall_num<=0||syscall_num>=SYS_CALL_NUM){
     exit(-1);
   }
-  // printf("sys call number: %d\n",syscall_num );
   syscall_handlers[syscall_num](f);
 
 }
 
 
 static struct fd_entry *
-find_fd_entry_by_fd (int fd)
+find_fd (int fd)
 {
   struct fd_entry *ret;
   struct list_elem *l;
