@@ -137,7 +137,7 @@ userprog/syscall.h | 1
 ### A reflection on the project–what exactly did each member do? What went well, and what could be improved?
 
     The work 陈苏秦 does is to implement the part of system call.
-    The work 徐逸飞 does is to implement the part of argument passing and filesystem.  
+    The work 徐逸飞 does is to implement the part of argument passing and process.  
 
     Some easy task of system call went well, but some complex tasks are difficult. And they are hard to debug in pintos.  
     What need to be improved is that the design logic and the code style. Also, some special conditions are not considered.
