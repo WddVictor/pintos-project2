@@ -1,4 +1,4 @@
-# OS Project 2-report  
+# OS Project 2 User Program Report
 
 11611209 徐逸飞
 11611225 陈苏秦
@@ -20,13 +20,7 @@ Modified the structure of thread:
 
 ```
 
-### process.c
-
-```c
-
-```
-
-### syscall.c 
+### syscall.c  
 
 In syscall.c, we use the `struct intr_frame* f` to transfer the message.  
 Added the following functions:  
@@ -110,32 +104,45 @@ while (esp % 4 not equals 0)
 end while
 /*make sure the esp is a multiple of 4*/
 *(esp - 4) = 0;//avoid there is no arguments
-*p = esp - 4;
-p--;
+*--p = esp - 4;
+
 for i = n to 0
   *p-- = args[i]// store the data address into the stack.
 end for
 //put the argc, argv into the stack
-*p-- = p + 1;
-*p-- = n;
-*p-- = 0;
+*--p = p + 1;
+*--p = n;
+*--p = 0;
 //set the pointer points to the new top of the stack
-if_.esp = p + 1;
+if_.esp = p ;
 ```
 
 ## Synchronization  
+
+    The filesystem is thread safe.
+![](pintos.png)
 
 ## Rationale  
 
 The advantages we think of our codes is that we separate the frequently used codes into method. In this way, we can avoid many copies. Also we use the structure to store the information of the thread, which can be used for any programs and no need to worry about the information missing.
 
-How much coding:
+How much code written:  
+threads/thread.c | 13  
+threads/thread.h | 26 +  
+userprog/exception.c | 8  
+userprog/process.c | 210 ++++++++++++++--  
+userprog/syscall.c | 447 ++++++++++++++++++++++++++++++-  
+userprog/syscall.h | 1  
 
 ### A reflection on the project–what exactly did each member do? What went well, and what could be improved?
 
-    The work I do is to implement the part of system call.  
+    The work 陈苏秦 does is to implement the part of system call.
+    The work 徐逸飞 does is to implement the part of argument passing and filesystem.  
+
     Some easy task of system call went well, but some complex tasks are difficult. And they are hard to debug in pintos.  
     What need to be improved is that the design logic and the code style. Also, some special conditions are not considered.
+
+    And to figure out how the  user stack pointer works also takes a lot of time. So we spend much time to make it clear.
 
 ### Does your code exhibit any major memory safety problems (specially regarding strings), memory leaks, poor error handling, or race conditions?
 
